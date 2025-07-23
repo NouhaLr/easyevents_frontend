@@ -16,7 +16,6 @@ function App() {
   const [user, setUser] = useState(null);
 
 
-  // ✅ add state for form fields
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,7 +37,6 @@ function App() {
 
   function togglePopup() {
     setPopupVisible(!popupVisible);
-    // ✅ clear form when opening
     setUsername('');
     setEmail('');
     setPassword('');
@@ -64,101 +62,60 @@ function App() {
     alert("Ticket form popup coming soon!");
   }
 
-//   async function handleSignUp() {
-//     try {
-//       const response = await axios.post("http://127.0.0.1:8000/api/register/", {
-//         username,
-//         email,
-//         password
-//       });
-
-//       alert("User registered successfully!");
-//       console.log(response.data);
-
-//       togglePopup();  // close popup on success
-//     } catch (error) {
-//       console.error("Registration error:", error.response?.data || error);
-//       alert("Registration failed. Check console for details.");
-//     }
-//   }
-
-// async function handleSignIn() {
-//   try {
-//     const response = await axios.post("http://127.0.0.1:8000/api/login/", {
-//       email,
-//       password
-//     });
-
-//     console.log("Login success:", response.data);
-//    const decoded = jwtDecode(response.data.access);
-//     localStorage.setItem("access_token", response.data.access);
-//     localStorage.setItem("refresh_token", response.data.refresh);
-//     localStorage.setItem("user_role", decoded.role);
-//     localStorage.setItem("username", decoded.username);
-
- 
-//     console.log("Decoded:", decoded);  
-
-//     setUser({ username: decoded.username, email: decoded.email ,role: decoded.role  });
-
-//     alert("Logged in successfully!");
-//     togglePopup();
-
-//   } catch (error) {
-//     console.error("Login error:", error.response?.data || error);
-//     alert("Login failed. Check your email/password.");
-//   }
-// }
-
 
 async function handleUnifiedAuth() {
+  if (!email || !password) {
+    alert("Please enter both email and password.");
+    return;
+  }
+
   try {
-    // First try to log in
-    const loginResponse = await axios.post("http://127.0.0.1:8000/api/login/", {
-      email,
-      password,
-    });
+    const checkResponse = await axios.post("http://127.0.0.1:8000/api/check-email/", { email });
 
-    const decoded = jwtDecode(loginResponse.data.access);
-    localStorage.setItem("access_token", loginResponse.data.access);
-    localStorage.setItem("refresh_token", loginResponse.data.refresh);
-    setUser({ username: decoded.username, email: decoded.email, role: decoded.role });
+    const userExists = checkResponse.data.exists;
 
-    alert("Logged in successfully!");
-    togglePopup();
-  } catch (loginError) {
-    if (loginError.response?.status === 401) {
-      // If login fails, try registering
-      const extractedUsername = email.split('@')[0];
-      try {
-        const registerResponse = await axios.post("http://127.0.0.1:8000/api/register/", {
-          username: extractedUsername,
-          email,
-          password,
-        });
+    if (userExists) {
+      const loginResponse = await axios.post("http://127.0.0.1:8000/api/login/", {
+        email,
+        password,
+      });
 
-        alert("User registered successfully! Logging you in...");
+      const decoded = jwtDecode(loginResponse.data.access);
+      localStorage.setItem("access_token", loginResponse.data.access);
+      localStorage.setItem("refresh_token", loginResponse.data.refresh);
+      setUser({ username: decoded.username, email: decoded.email, role: decoded.role });
 
-        // Now log in after successful registration
-        const loginResponse = await axios.post("http://127.0.0.1:8000/api/login/", {
-          email,
-          password,
-        });
-
-        const decoded = jwtDecode(loginResponse.data.access);
-        localStorage.setItem("access_token", loginResponse.data.access);
-        localStorage.setItem("refresh_token", loginResponse.data.refresh);
-        setUser({ username: decoded.username, email: decoded.email, role: decoded.role });
-
-        togglePopup();
-      } catch (registerError) {
-        console.error("Registration failed:", registerError.response?.data || registerError);
-        alert("Could not register.");
-      }
+      alert("Logged in successfully!");
+      togglePopup();
+      
     } else {
-      console.error("Login failed:", loginError.response?.data || loginError);
-      alert("Login failed.");
+      const extractedUsername = email.split('@')[0];
+
+      await axios.post("http://127.0.0.1:8000/api/register/", {
+        username: extractedUsername,
+        email,
+        password,
+      });
+
+      alert("User registered successfully! Logging you in...");
+      await new Promise((r) => setTimeout(r, 300)); 
+
+      const loginResponse = await axios.post("http://127.0.0.1:8000/api/login/", {
+        email,
+        password,
+      });
+
+      const decoded = jwtDecode(loginResponse.data.access);
+      localStorage.setItem("access_token", loginResponse.data.access);
+      localStorage.setItem("refresh_token", loginResponse.data.refresh);
+      setUser({ username: decoded.username, email: decoded.email, role: decoded.role });
+
+      togglePopup();
     }
+
+  } catch (err) {
+    console.error("Authentication process failed:", err.response?.data || err);
+    alert("Authentication failed: " + (err.response?.data?.detail || "Unknown error"));
   }
 }
 
@@ -178,7 +135,7 @@ function handleLogout() {
       <Navbar
   scrollToSection={scrollToSection}
   togglePopup={() => { setIsSignUp(true); togglePopup(); }}
-  user={user}
+  user={user} 
    handleLogout={handleLogout} 
 />
 
