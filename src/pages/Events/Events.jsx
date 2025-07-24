@@ -19,7 +19,7 @@ function Events({ showTicketForm, expandEvent, user }) {
 
  // const [ setEditPopupEvent] = useState(null);
 const [confirmDeleteName, setConfirmDeleteName] = useState('');
-const [selectedEvent, setSelectedEvent] = useState(null);
+const [selectedEvent, setSelectedEvent] = useState('');
 const [showModifyPopup, setShowModifyPopup] = useState(false);
 const [showConfirmDeletePopup, setShowConfirmDeletePopup] = useState(false);
 
@@ -84,12 +84,13 @@ const [showConfirmDeletePopup, setShowConfirmDeletePopup] = useState(false);
 
  const handleUpdateEvent = async () => {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token');
     const res = await axios.put(
       `http://localhost:8000/events/update/${selectedEvent.id}/`,
       {
         name: selectedEvent.name,
-        date: selectedEvent.date,
+        event_date: selectedEvent.event_date,
+        event_time: selectedEvent.event_time,
         place: selectedEvent.place,
         normal_ticket_price: selectedEvent.normal_ticket_price,
         vip_ticket_price: selectedEvent.vip_ticket_price,
@@ -199,8 +200,23 @@ const handleDeleteEvent = async (id) => {
       <div className="popup-form">
         <h3>Modify Event Info</h3>
         <input type="text" value={selectedEvent.name} onChange={(e) => setSelectedEvent({ ...selectedEvent, name: e.target.value })} />
-        <input type="datetime-local" value={selectedEvent.date} onChange={(e) => setSelectedEvent({ ...selectedEvent, date: e.target.value })} />
-        <input type="text" value={selectedEvent.place} onChange={(e) => setSelectedEvent({ ...selectedEvent, place: e.target.value })} />
+<input
+  type="date"
+  value={selectedEvent.event_date||''}
+  onChange={(e) =>
+    setSelectedEvent({ ...selectedEvent, event_date: e.target.value })
+    
+  }
+
+/>
+
+<input
+  type="time"
+  value={selectedEvent.event_time||''}
+  onChange={(e) =>
+    setSelectedEvent({ ...selectedEvent, event_time: e.target.value })
+  }
+/>        <input type="text" value={selectedEvent.place} onChange={(e) => setSelectedEvent({ ...selectedEvent, place: e.target.value })} />
         <input type="number" value={selectedEvent.normal_ticket_price} onChange={(e) => setSelectedEvent({ ...selectedEvent, normal_ticket_price: e.target.value })} />
         <input type="number" value={selectedEvent.vip_ticket_price} onChange={(e) => setSelectedEvent({ ...selectedEvent, vip_ticket_price: e.target.value })} />
         <textarea value={selectedEvent.description} onChange={(e) => setSelectedEvent({ ...selectedEvent, description: e.target.value })}></textarea>

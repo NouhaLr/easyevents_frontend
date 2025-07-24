@@ -8,14 +8,10 @@ import './App.css';
 import axios from 'axios';
 import { jwtDecode } from "jwt-decode";
 
-
-
 function App() {
   const [popupVisible, setPopupVisible] = useState(false);
   const [isSignUp, setIsSignUp] = useState(true);
   const [user, setUser] = useState(null);
-
-
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -62,60 +58,49 @@ function App() {
     alert("Ticket form popup coming soon!");
   }
 
+  async function handleSignUp() {
+    try {
+      const response = await axios.post("http://127.0.0.1:8000/api/register/", {
+        username,
+        email,
+        password
+      });
 
-async function handleUnifiedAuth() {
-  if (!email || !password) {
-    alert("Please enter both email and password.");
-    return;
+      alert("User registered successfully!");
+      console.log(response.data);
+
+      togglePopup();  // close popup on success
+    } catch (error) {
+      console.error("Registration error:", error.response?.data || error);
+      alert("Registration failed. Check console for details.");
+    }
   }
 
+async function handleSignIn() {
   try {
-    const checkResponse = await axios.post("http://127.0.0.1:8000/api/check-email/", { email });
+    const response = await axios.post("http://127.0.0.1:8000/api/login/", {
+      email,
+      password
+    });
 
-    const userExists = checkResponse.data.exists;
+    console.log("Login success:", response.data);
+   const decoded = jwtDecode(response.data.access);
+    localStorage.setItem("access_token", response.data.access);
+    localStorage.setItem("refresh_token", response.data.refresh);
+    localStorage.setItem("user_role", decoded.role);
+    localStorage.setItem("username", decoded.username);
 
-    if (userExists) {
-      const loginResponse = await axios.post("http://127.0.0.1:8000/api/login/", {
-        email,
-        password,
-      });
+ 
+    console.log("Decoded:", decoded);  
 
-      const decoded = jwtDecode(loginResponse.data.access);
-      localStorage.setItem("access_token", loginResponse.data.access);
-      localStorage.setItem("refresh_token", loginResponse.data.refresh);
-      setUser({ username: decoded.username, email: decoded.email, role: decoded.role });
+    setUser({ username: decoded.username, email: decoded.email ,role: decoded.role  });
 
-      alert("Logged in successfully!");
-      togglePopup();
-      
-    } else {
-      const extractedUsername = email.split('@')[0];
+    alert("Logged in successfully!");
+    togglePopup();
 
-      await axios.post("http://127.0.0.1:8000/api/register/", {
-        username: extractedUsername,
-        email,
-        password,
-      });
-
-      alert("User registered successfully! Logging you in...");
-      await new Promise((r) => setTimeout(r, 300)); 
-
-      const loginResponse = await axios.post("http://127.0.0.1:8000/api/login/", {
-        email,
-        password,
-      });
-
-      const decoded = jwtDecode(loginResponse.data.access);
-      localStorage.setItem("access_token", loginResponse.data.access);
-      localStorage.setItem("refresh_token", loginResponse.data.refresh);
-      setUser({ username: decoded.username, email: decoded.email, role: decoded.role });
-
-      togglePopup();
-    }
-
-  } catch (err) {
-    console.error("Authentication process failed:", err.response?.data || err);
-    alert("Authentication failed: " + (err.response?.data?.detail || "Unknown error"));
+  } catch (error) {
+    console.error("Login error:", error.response?.data || error);
+    alert("Login failed. Check your email/password.");
   }
 }
 
@@ -143,27 +128,67 @@ function handleLogout() {
       <Events user={user} showTicketForm={showTicketForm} expandEvent={expandEvent} />
       <About />
 
-      {popupVisible && (
-  <div className="popup">
-    <div className="popup-content">
-      <span className="close-btn" onClick={togglePopup}>&times;</span>
-      <h2>Sign In / Sign Up</h2>
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <button className="popup-btn" onClick={handleUnifiedAuth}>Continue</button>
-    </div>
-  </div>
-)}
+     {popupVisible && (
+        <div className="popup">
+          <div className="popup-content">
+            <span className="close-btn" onClick={togglePopup}>&times;</span>
+            {isSignUp ? (
+              <>
+                <h2>Sign Up</h2>
+                <input
+                  type="text"
+                  placeholder="Username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button className="popup-btn" onClick={handleSignUp}>Sign Up</button>
+                <p>Already have an account?
+                  <span style={{ color: '#007bff', cursor: 'pointer', marginLeft: '5px' }}
+                        onClick={() => setIsSignUp(false)}>
+                    Sign In
+                  </span>
+                </p>
+              </>
+            ) : (
+              <>
+                <h2>Sign In</h2>
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button className="popup-btn" onClick={handleSignIn}>Sign In</button>
+                <p>Don't have an account?
+                  <span style={{ color: '#007bff', cursor: 'pointer', marginLeft: '5px' }}
+                        onClick={() => setIsSignUp(true)}>
+                    Sign Up
+                  </span>
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
 
 
       <Footer togglePopup={() => { setIsSignUp(true); togglePopup(); }} />
