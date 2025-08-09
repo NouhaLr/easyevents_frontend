@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import './Events.css';
 import axios from 'axios';
@@ -17,21 +18,60 @@ function Events({ showTicketForm, expandEvent, user }) {
     image: null
   });
 
- // const [ setEditPopupEvent] = useState(null);
-const [confirmDeleteName, setConfirmDeleteName] = useState('');
-const [selectedEvent, setSelectedEvent] = useState('');
-const [showModifyPopup, setShowModifyPopup] = useState(false);
-const [showConfirmDeletePopup, setShowConfirmDeletePopup] = useState(false);
+  const [confirmDeleteName, setConfirmDeleteName] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState('');
+  const [showModifyPopup, setShowModifyPopup] = useState(false);
+  const [showConfirmDeletePopup, setShowConfirmDeletePopup] = useState(false);
 
+  const [receiptData, setReceiptData] = useState({});
+  const [showReservePopup, setShowReservePopup] = useState(false);
+  const [selectedEventForReservation, setSelectedEventForReservation] = useState(null);
+  const [fullName, setFullName] = useState('');
+  const [ticketType, setTicketType] = useState('normal');
+  const [address, setAddress] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('card');
+
+  const [popupMessage, setPopupMessage] = useState('');
+const [showPopup, setShowPopup] = useState(false);
+
+const showAlert = (message) => {
+  setPopupMessage(message);
+  setShowPopup(true);
+};
 
   const fetchEvents = async () => {
-    try {
-      const res = await axios.get('http://localhost:8000/events/list/');
-      setEvents(res.data);
-    } catch (error) {
-      console.error("Failed to fetch events:", error);
+  try {
+    const res = await axios.get('http://localhost:8000/events/list/');
+    setEvents(res.data);
+
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      const reservationRequests = res.data.map(event =>
+        axios
+          .get(`http://localhost:8000/events/reservations/${event.id}/`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          .then(response => ({
+            eventId: event.id,
+            data: response.data,
+          }))
+          .catch(() => ({
+            eventId: event.id,
+            data: null,
+          }))
+      );
+
+      const reservations = await Promise.all(reservationRequests);
+      const newReceiptData = {};
+      reservations.forEach(res => {
+        newReceiptData[res.eventId] = res.data?.receipt_number ? res.data : null;
+      });
+      setReceiptData(newReceiptData);
     }
-  };
+  } catch (error) {
+    console.error('Failed to fetch events:', error);
+  }
+};
 
   useEffect(() => {
     fetchEvents();
@@ -61,7 +101,7 @@ const [showConfirmDeletePopup, setShowConfirmDeletePopup] = useState(false);
       });
 
       if (res.status === 201 || res.status === 200) {
-        alert("Event added successfully!");
+        showAlert("Event added successfully!");
         setShowAddPopup(false);
         setNewEvent({
           name: '',
@@ -78,100 +118,169 @@ const [showConfirmDeletePopup, setShowConfirmDeletePopup] = useState(false);
       }
     } catch (error) {
       console.error("Error adding event:", error);
-      alert("Unauthorized or invalid data.");
+      showAlert("Unauthorized or invalid data.");
     }
   };
 
- const handleUpdateEvent = async () => {
-  try {
-    const token = localStorage.getItem('access_token');
-    const res = await axios.put(
-      `http://localhost:8000/events/update/${selectedEvent.id}/`,
-      {
-        name: selectedEvent.name,
-        event_date: selectedEvent.event_date,
-        event_time: selectedEvent.event_time,
-        place: selectedEvent.place,
-        normal_ticket_price: selectedEvent.normal_ticket_price,
-        vip_ticket_price: selectedEvent.vip_ticket_price,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
+  const handleUpdateEvent = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await axios.put(
+        `http://localhost:8000/events/update/${selectedEvent.id}/`,
+        {
+          name: selectedEvent.name,
+          event_date: selectedEvent.event_date,
+          event_time: selectedEvent.event_time,
+          place: selectedEvent.place,
+          normal_ticket_price: selectedEvent.normal_ticket_price,
+          vip_ticket_price: selectedEvent.vip_ticket_price,
         },
-      }
-    );
-    console.log('Event updated:', res.data);
-    setShowModifyPopup(false);
-  } catch (error) {
-    console.error('Error updating event:', error);
-  }
-};
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      console.log('Event updated:', res.data);
+      setShowModifyPopup(false);
+    } catch (error) {
+      console.error('Error updating event:', error);
+    }
+  };
 
+  const handleDeleteEvent = async (id) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      await axios.delete(`http://localhost:8000/events/delete/${id}/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      showAlert("Event deleted.");
+      fetchEvents();
+    } catch (error) {
+      showAlert("Failed to delete event.");
+      console.error(error);
+    }
+  };
 
-const handleDeleteEvent = async (id) => {
-  try {
-    const token = localStorage.getItem('access_token');
-    await axios.delete(`http://localhost:8000/events/delete/${id}/`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    alert("Event deleted.");
-    fetchEvents();
-  } catch (error) {
-    alert("Failed to delete event.");
-    console.error(error);
-  }
-};
+  const handleReservationSubmit = async () => {
+    const token = localStorage.getItem("access_token");
+    try {
+      const res = await axios.post(`http://localhost:8000/events/reservations/`, {
+        event: selectedEventForReservation.id,
+        full_name: fullName,
+        ticket_type: ticketType,
+        address: ticketType === 'vip' ? address : '',
+        payment_method: paymentMethod
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
+      showAlert(`Reservation successful!\nReceipt #: ${res.data.receipt_number}`);
+      setReceiptData(prev => ({ ...prev, [selectedEventForReservation.id]: res.data }));
+      setShowReservePopup(false);
+    } catch (err) {
+      showAlert(err.response?.data?.detail || "Reservation failed.");
+    }
+  };
 
   return (
-   <section id="events" className="events-section">
-  <h2>Upcoming Events</h2>
+    <section id="events" className="events-section">
+      <h2>Upcoming Events</h2>
 
-  {user?.role === 'admin' && (
-    <div style={{ textAlign: 'right', marginBottom: '10px' }}>
-      <button className="add-event-btn" onClick={() => setShowAddPopup(true)}>
-        + Add Event
-      </button>
-    </div>
-  )}
+      {user?.role === 'admin' && (
+        <div style={{ textAlign: 'right', marginBottom: '10px' }}>
+          <button className="add-event-btn" onClick={() => setShowAddPopup(true)}>
+            + Add Event
+          </button>
+        </div>
+      )}
 
-  <div className="event-grid">
-    {events.map((event, idx) => (
-      <div key={idx} className="event-card" onClick={(e) => expandEvent(e.currentTarget, e)}>
-        <div className="event-content">
-          <div className="event-header">
-            <img src={event.image || '/default-event.jpg'} alt="Event" />
-            <div className="event-info">
-              <h3>{event.name}</h3>
-              <p>{new Date(event.date).toLocaleString()}</p>
-              <p>{event.place}</p>
+      <div className="event-grid">
+        {events.map((event, idx) => (
+          <div key={idx} className="event-card" onClick={(e) => expandEvent(e.currentTarget, e)}>
+            <div className="event-content">
+              <div className="event-header">
+                <img src={event.image || '/default-event.jpg'} alt="Event" />
+                <div className="event-info">
+                  <h3>{event.name}</h3>
+                  <p>{new Date(event.date).toLocaleString()}</p>
+                  <p>{event.place}</p>
+                </div>
+              </div>
+              <div className="event-details">
+                <h4>Ticket Prices</h4>
+                <p>Normal: {event.normal_ticket_price} DT</p>
+                <p>VIP: {event.vip_ticket_price} DT</p>
+                <p>Description: {event.description}</p>
+                <p>Plan: {event.plan}</p>
+                {receiptData[event.id] ? (
+                  <button className="ticket-btn" onClick={(e) => {
+                    e.stopPropagation();
+                    showAlert(`Receipt Number: ${receiptData[event.id].receipt_number}\nName: ${receiptData[event.id].full_name}`);
+                  }}>
+                    Check Your Receipt
+                  </button>
+                ) : (
+                  <button className="ticket-btn" onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedEventForReservation(event);
+                    setShowReservePopup(true);
+                  }}>
+                    Get Your Bracelet Now
+                  </button>
+                )}
+
+                {user?.role === 'admin' && (
+                  <button className="modify-btn" onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedEvent(event);
+                    setShowModifyPopup(true);
+                  }}>
+                    Modify Info
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-          <div className="event-details">
-            <h4>Ticket Prices</h4>
-            <p>Normal: {event.normal_ticket_price} DT</p>
-            <p>VIP: {event.vip_ticket_price} DT</p>
-            <button className="ticket-btn" onClick={(e) => { e.stopPropagation(); showTicketForm(); }}>
-              Get Your Ticket Now
-            </button>
-            {user?.role === 'admin' && (
-              <button className="modify-btn" onClick={(e) => {
-                e.stopPropagation();
-                setSelectedEvent(event);
-                setShowModifyPopup(true);
-              }}>
-                Modify Info
-              </button>
+        ))}
+      </div>
+
+      {/* Reserve Bracelet Popup */}
+      {showReservePopup && (
+        <div className="popup-overlay">
+          <div className="popup-form">
+            <h3>Reserve for {selectedEventForReservation.name}</h3>
+            <input type="text" placeholder="Full Name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+
+            <label>
+              <input type="radio" value="normal" checked={ticketType === 'normal'} onChange={() => setTicketType('normal')} /> Normal Ticket
+            </label>
+            <label>
+              <input type="radio" value="vip" checked={ticketType === 'vip'} onChange={() => setTicketType('vip')} /> VIP Ticket
+            </label>
+
+            {ticketType === 'vip' && (
+              <input type="text" placeholder="Delivery Address" value={address} onChange={(e) => setAddress(e.target.value)} />
             )}
+
+            <label>
+              <input type="radio" value="card" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} /> Pay with Card
+            </label>
+            <label>
+              <input type="radio" value="reception" checked={paymentMethod === 'reception'} onChange={() => setPaymentMethod('reception')} /> Pay at Reception
+            </label>
+
+            <div className="popup-buttons">
+              <button onClick={handleReservationSubmit}>Pay</button>
+              <button onClick={() => setShowReservePopup(false)}>Cancel</button>
+            </div>
           </div>
         </div>
-      </div>
-    ))}
-  </div>
+      )}
 
-  {/* Add Event Popup */}
+    
+{/* Add Event Popup */}
   {showAddPopup && (
     <div className="popup-overlay">
       <div className="popup-form">
@@ -247,7 +356,7 @@ const handleDeleteEvent = async (id) => {
                 setShowConfirmDeletePopup(false);
                 setShowModifyPopup(false);
               } else {
-                alert("Event name does not match!");
+                showAlert("Event name does not match!");
               }
             }}
           >
@@ -258,9 +367,18 @@ const handleDeleteEvent = async (id) => {
       </div>
     </div>
   )}
-</section>
-
+  {showPopup && (
+  <div className="popup-overlay">
+    <div className="popup-form">
+      <p>{popupMessage}</p>
+      <div className="popup-buttons">
+        <button onClick={() => setShowPopup(false)}>Close</button>
+      </div>
+    </div>
+  </div>
+)}
+    </section>
   );
 }
 
-export default Events;
+  export default Events;

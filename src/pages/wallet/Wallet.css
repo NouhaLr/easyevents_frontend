@@ -1,0 +1,35 @@
+/* wallet.css */
+
+.wallet-container {
+  max-width: 600px;
+  margin: auto;
+  padding: 80px 20px 40px 20px; /* top padding increased to clear navbar */
+  min-height: calc(100vh - 140px); /* full viewport height minus estimated header+footer height */
+  box-sizing: border-box;
+  background-color: #fff; /* optional for better contrast */
+}
+
+.wallet-container h2,
+.wallet-container h3 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+/* Add spacing between form and message */
+.wallet-container > div,
+.wallet-container > p {
+  margin-bottom: 20px;
+}
+
+/* You can style the message */
+.wallet-container p[style*="color: red"] {
+  font-weight: bold;
+}
+
+/* Make footer stick to bottom if needed, add in your global CSS or wallet css */
+.footer {
+  position: relative; /* or fixed if your layout requires */
+  bottom: 0;
+  width: 100%;
+  /* other footer styles */
+}
