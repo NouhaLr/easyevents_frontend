@@ -102,28 +102,30 @@ function Wallet() {
       </div>
 
       <h3>Transactions</h3>
-      {filteredTransactions.length === 0 && <p>No transactions found.</p>}
-      <ul style={{ listStyle: "none", paddingLeft: 0 }}>
-        {filteredTransactions.map((tx) => (
-          <li
-            key={tx.id}
-            style={{ borderBottom: "1px solid #ccc", padding: "8px 0" }}
-          >
-            <div>
-              <strong>Event:</strong> {tx.event_name}
-            </div>
-            <div>
-              <strong>Amount:</strong> {tx.amount.toFixed(2)} DT
-            </div>
-            <div>
-              <strong>Date:</strong> {new Date(tx.timestamp).toLocaleString()}
-            </div>
-            <div>
-              <strong>Description:</strong> {tx.description || "-"}
-            </div>
-          </li>
-        ))}
-      </ul>
+{filteredTransactions.length === 0 && <p>No transactions found.</p>}
+<ul style={{ listStyle: "none", paddingLeft: 0 }}>
+  {filteredTransactions.map((tx) => (
+    <li
+      key={tx.id}
+      style={{ borderBottom: "1px solid #ccc", padding: "8px 0" }}
+    >
+      <div>
+        <strong>Event:</strong> {tx.event_name}
+      </div>
+      <div>
+        <strong>Amount:</strong>{" "}
+        {Number(tx.amount) ? Number(tx.amount).toFixed(2) : "0.00"} DT
+      </div>
+      <div>
+        <strong>Date:</strong> {new Date(tx.timestamp).toLocaleString()}
+      </div>
+      <div>
+        <strong>Description:</strong> {tx.description || "-"}
+      </div>
+    </li>
+  ))}
+</ul>
+
     </div>
   );
 }

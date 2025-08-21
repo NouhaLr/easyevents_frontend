@@ -8,6 +8,7 @@ import './App.css';
 import axios from 'axios';
 import { jwtDecode } from "jwt-decode";
 import Wallet from './pages/wallet/wallet';
+import RFIDSimulator from './pages/RFIDSimulator/RFIDSimulator';
 import { Route, Routes } from 'react-router-dom';
 
 function App() {
@@ -131,6 +132,7 @@ function App() {
           }
         />
         <Route path="/wallet" element={<Wallet />} />
+        <Route path="/RFIDSimulator" element={<RFIDSimulator />} />
       </Routes>
 
       {popupVisible && (
